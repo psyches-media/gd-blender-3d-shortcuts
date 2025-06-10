@@ -112,7 +112,7 @@ func _init():
 	overlay_label.set("custom_colors/font_color_shadow", Color.BLACK)
 
 func _ready():
-	var spatial_editor = Utils.get_spatial_editor(get_editor_interface().get_base_control())
+	var spatial_editor = Utils.get_spatial_editor(EditorInterface.get_base_control())
 	var snap_dialog = Utils.get_snap_dialog(spatial_editor)
 	var snap_dialog_line_edits = Utils.get_snap_dialog_line_edits(snap_dialog)
 	translate_snap_line_edit = snap_dialog_line_edits[0]
@@ -220,15 +220,15 @@ func _on_snap_button_toggled(pressed):
 
 func _handles(object):
 	if object is Node3D:
-		_is_editing = get_editor_interface().get_selection().get_selected_nodes().size()
+		_is_editing = EditorInterface.get_selection().get_selected_nodes().size()
 		return _is_editing
 	elif object.get_class() == "MultiNodeEdit": # Explicitly handle MultiNodeEdit, otherwise, it will active when selected Resource
-		_is_editing = get_editor_interface().get_selection().get_transformable_selected_nodes().size() > 0
+		_is_editing = EditorInterface.get_selection().get_transformable_selected_nodes().size() > 0
 		return _is_editing
 	return false
 
 func _edit(object):
-	var scene_root = get_editor_interface().get_edited_scene_root()
+	var scene_root = EditorInterface.get_edited_scene_root()
 	if scene_root:
 		# Let editor free axis_mesh_inst as the scene closed,
 		# then create new instance whenever needed
@@ -384,7 +384,7 @@ func _forward_3d_draw_over_viewport(overlay):
 			overlay_label.get_parent().remove_child(overlay_label)
 		return
 
-	var editor_settings = get_editor_interface().get_editor_settings()
+	var editor_settings = EditorInterface.get_editor_settings()
 	var line_color = DEFAULT_LINE_COLOR
 	if editor_settings.has_setting("editors/3d/selection_box_color"):
 		line_color = editor_settings.get_setting("editors/3d/selection_box_color")
@@ -435,7 +435,7 @@ func text_transform(text):
 				_applying_transform.basis.y = Vector3.UP * input_value
 			if constraint_axis.z:
 				_applying_transform.basis.z = Vector3.BACK * input_value
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	var t = _applying_transform
 	if is_global or (constraint_axis.is_equal_approx(Vector3.ONE) and current_session == SESSION.TRANSLATE):
 		t.origin += pivot_point
@@ -444,7 +444,7 @@ func text_transform(text):
 		Utils.apply_transform(nodes, t, _cache_global_transforms)
 
 func mouse_transform(event):
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	var is_single_node = nodes.size() == 1
 	var node1 = nodes[0]
 	var is_pivot_point_behind_camera = _camera.is_position_behind(pivot_point)
@@ -538,7 +538,7 @@ func mouse_transform(event):
 	_is_warping_mouse = false
 
 func cache_selected_nodes_transforms():
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	var inversed_pivot_transform = Transform3D().translated(pivot_point).affine_inverse()
 	for i in nodes.size():
 		var node = nodes[i]
@@ -546,7 +546,7 @@ func cache_selected_nodes_transforms():
 		_cache_transforms.append(inversed_pivot_transform * node.global_transform)
 
 func update_pivot_point():
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	var aabb = AABB()
 	for i in nodes.size():
 		var node = nodes[i]
@@ -556,7 +556,7 @@ func update_pivot_point():
 	pivot_point = aabb.position + aabb.size / 2.0
 
 func start_session(session, camera, event):
-	if get_editor_interface().get_selection().get_transformable_selected_nodes().size() == 0:
+	if EditorInterface.get_selection().get_transformable_selected_nodes().size() == 0:
 		return
 	current_session = session
 	_camera = camera
@@ -574,7 +574,7 @@ func start_session(session, camera, event):
 	overlay_control = Utils.get_spatial_editor_viewport_control(spatial_editor_viewport) if spatial_editor_viewport else null
 
 func end_session():
-	_is_editing = get_editor_interface().get_selection().get_transformable_selected_nodes().size() > 0
+	_is_editing = EditorInterface.get_selection().get_transformable_selected_nodes().size() > 0
 	# Manually set is_global to avoid triggering revert()
 	if is_instance_valid(local_space_button):
 		local_space_button.button_pressed = !_is_global_on_session
@@ -584,7 +584,7 @@ func end_session():
 
 func commit_session():
 	var undo_redo = get_undo_redo()
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	Utils.revert_transform(nodes, _cache_global_transforms)
 	undo_redo.create_action(SESSION.keys()[current_session].to_lower().capitalize())
 	var t = _applying_transform
@@ -598,7 +598,7 @@ func commit_session():
 
 func commit_reset_transform():
 	var undo_redo = get_undo_redo()
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	match current_session:
 		SESSION.TRANSLATE:
 			undo_redo.create_action("Reset Translation")
@@ -619,7 +619,7 @@ func commit_reset_transform():
 
 func commit_hide_nodes():
 	var undo_redo = get_undo_redo()
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	undo_redo.create_action("Hide Nodes")
 	undo_redo.add_do_method(Utils, "hide_nodes", nodes, true)
 	undo_redo.add_undo_method(Utils, "hide_nodes", nodes, false)
@@ -627,11 +627,11 @@ func commit_hide_nodes():
 
 ## Opens a popup dialog to confirm deletion of selected nodes.
 func confirm_delete_selected_nodes():
-	var selected_nodes = get_editor_interface().get_selection().get_selected_nodes()
+	var selected_nodes = EditorInterface.get_selection().get_selected_nodes()
 	if selected_nodes.is_empty():
 		return
 
-	var editor_theme = get_editor_interface().get_base_control().theme
+	var editor_theme = EditorInterface.get_base_control().theme
 	var popup = ConfirmationDialog.new()
 	popup.theme = editor_theme
 
@@ -657,8 +657,8 @@ func confirm_delete_selected_nodes():
 ## Instantly deletes selected nodes and creates an undo history entry.
 func delete_selected_nodes():
 	var undo_redo = get_undo_redo()
-	var selected_nodes = get_editor_interface().get_selection().get_selected_nodes()
 
+	var selected_nodes = EditorInterface.get_selection().get_selected_nodes()
 	# Avoid creating an unnecessary history entry if no nodes are selected.
 	if selected_nodes.is_empty():
 		return
@@ -679,7 +679,7 @@ func delete_selected_nodes():
 	undo_redo.commit_action()
 
 func revert():
-	var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+	var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 	Utils.revert_transform(nodes, _cache_global_transforms)
 	_editing_transform = Transform3D.IDENTITY
 	_applying_transform = Transform3D.IDENTITY
@@ -769,7 +769,7 @@ func input_string_changed():
 		text_transform(_input_string)
 	else:
 		_applying_transform = Transform3D.IDENTITY
-		var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+		var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 		Utils.revert_transform(nodes, _cache_global_transforms)
 	update_overlays()
 
@@ -807,7 +807,7 @@ func set_is_global(v):
 
 func draw_axises():
 	if not constraint_axis.is_equal_approx(Vector3.ONE):
-		var nodes = get_editor_interface().get_selection().get_transformable_selected_nodes()
+		var nodes = EditorInterface.get_selection().get_transformable_selected_nodes()
 		var axis_lines = []
 		if constraint_axis.x > 0:
 			axis_lines.append({"axis": Vector3.RIGHT, "color": Color.RED})
