@@ -71,7 +71,7 @@ func focus_item():
 	var angle = pos.angle_to_point(global_position) + PI / 2 # -90 deg initial offset
 	if angle < 0:
 		angle += 2 * PI
-	
+
 	var index = (angle / angle_offset)
 	var decimal = index - floor(index)
 	index = floor(index)
@@ -79,7 +79,7 @@ func focus_item():
 		index += 1
 	if index > buttons.size()-1:
 		index = 0
-	
+
 	set_button_style(focused_index, "normal", "normal")
 	focused_index = index
 	set_button_style(focused_index, "normal", "hover")
