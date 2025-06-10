@@ -12,37 +12,37 @@ const DEBUG_DRAW_OPTIONS = [
 	[
 		"Advance",
 		[
-			["Shadows", 
+			["Shadows",
 				[
 					["Shadow Atlas", 9], ["Directional Shadow Atlas", 10], ["Directional Shadow Splits", 14]
 				]
 			],
-			["Lights", 
+			["Lights",
 				[
 					["Omni Lights Cluster", 20], ["Spot Lights Cluster", 21]
 				]
 			],
-			["VoxelGI", 
+			["VoxelGI",
 				[
 					["VoxelGI Albedo", 6], ["VoxelGI Lighting", 7], ["VoxelGI Emission", 8]
 				]
 			],
-			["SDFGI", 
+			["SDFGI",
 				[
 					["SDFGI", 16], ["SDFGI Probes", 17], ["GI Buffer", 18]
 				]
 			],
-			["Environment", 
+			["Environment",
 				[
 					["SSAO", 12], ["SSIL", 13]
 				]
 			],
-			["Decals", 
+			["Decals",
 				[
 					["Decal Atlas", 15], ["Decal Cluster", 22]
 				]
 			],
-			["Others", 
+			["Others",
 				[
 					["Normal Buffer", 5], ["Scene Luminance", 11], ["Disable LOD", 19], ["Cluster Reflection Probes", 23], ["Occluders", 24], ["Motion Vectors", 25]
 				]
@@ -167,7 +167,7 @@ func _input(event):
 						else:
 							toggle_constraint_axis(Vector3.UP)
 						get_viewport().set_input_as_handled()
-	
+
 	if event is InputEventMouseMotion:
 		if current_session != SESSION.NONE and overlay_control:
 			# Infinite mouse movement
@@ -296,7 +296,7 @@ func _forward_3d_gui_input(camera, event):
 					commit_session()
 					end_session()
 					return true
-			
+
 			if event.keycode == KEY_SHIFT:
 				precision_mode = event.pressed
 				forward = true
@@ -357,7 +357,7 @@ func _forward_3d_gui_input(camera, event):
 						revert()
 						end_session()
 						return true
-		
+
 		if event is InputEventMouseButton:
 			if event.pressed:
 				if event.button_index == 2:
@@ -377,7 +377,7 @@ func _forward_3d_gui_input(camera, event):
 					forward = true
 
 	return forward
-	
+
 func _forward_3d_draw_over_viewport(overlay):
 	if current_session == SESSION.NONE:
 		if overlay_label.get_parent() != null:
@@ -657,8 +657,8 @@ func confirm_delete_selected_nodes():
 ## Instantly deletes selected nodes and creates an undo history entry.
 func delete_selected_nodes():
 	var undo_redo = get_undo_redo()
-	
 	var selected_nodes = get_editor_interface().get_selection().get_selected_nodes()
+
 	# Avoid creating an unnecessary history entry if no nodes are selected.
 	if selected_nodes.is_empty():
 		return
