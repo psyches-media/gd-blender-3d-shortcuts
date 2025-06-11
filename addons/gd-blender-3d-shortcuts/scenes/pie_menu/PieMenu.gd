@@ -1,159 +1,195 @@
 @tool
 extends Control
 
-signal item_selected(index)
-signal item_focused(index)
+
+signal item_selected(index: int)
+signal item_focused(index: int)
 signal item_cancelled()
 
-const button_margin = 6
 
-@export var items := [] : set =  set_items
-@export var selected_index = -1 : set = set_selected_index
-@export var radius = 100.0 : set = set_radius
-
-var buttons = []
-var pie_menus = []
-
-var focused_index = -1
-var theme_source_node = self : set = set_theme_source_node
-var grow_with_max_button_width = false
+const PieMenu := preload("PieMenu.gd") # SELF
 
 
-func _ready():
-	set_items(items)
-	set_selected_index(selected_index)
-	set_radius(radius)
+const BUTTON_MARGIN := 6
+
+
+@export var items: Array[Variant] = []: set = _set_items
+@export var selected_index := -1: set = _set_selected_index
+@export var radius := 100.0: set = _set_radius
+
+
+var buttons: Array[Button] = []
+var pie_menus: Array[PieMenu] = []
+var theme_source_node: Control = self: set = _set_theme_source_node
+
+
+var _focused_index := -1
+var _grow_with_max_button_width := false
+
+
+func _ready() -> void:
+	_set_items(items)
+	_set_selected_index(selected_index)
+	_set_radius(radius)
 	hide()
-	connect("visibility_changed", _on_visiblity_changed)
+	if visibility_changed.connect(_on_visiblity_changed) != OK:
+		push_error("Failed to connect to visibility_changed")
 
-func _input(event):
-	if visible:
-		if event is InputEventKey:
-			if event.pressed:
-				match event.keycode:
-					KEY_ESCAPE:
-						cancel()
-		if event is InputEventMouseMotion:
-			focus_item()
-			get_viewport().set_input_as_handled()
-		if event is InputEventMouseButton:
-			if event.pressed:
-				match event.button_index:
-					MOUSE_BUTTON_LEFT:
-						select_item(focused_index)
-						get_viewport().set_input_as_handled()
-					MOUSE_BUTTON_RIGHT:
-						cancel()
-						get_viewport().set_input_as_handled()
 
-func _on_visiblity_changed():
+func _input(event: InputEvent) -> void:
 	if not visible:
-		if selected_index != focused_index: # Cancellation
-			focused_index = selected_index
+		return
 
-func cancel():
+	var input_event_key := event as InputEventKey
+	if input_event_key != null:
+		if input_event_key.pressed:
+			match input_event_key.keycode:
+				KEY_ESCAPE:
+					_cancel()
+
+	if event is InputEventMouseMotion:
+		_focus_item()
+		get_viewport().set_input_as_handled()
+
+	var input_event_mouse_button := event as InputEventMouseButton
+	if input_event_mouse_button != null:
+		if input_event_mouse_button.pressed:
+			match input_event_mouse_button.button_index:
+				MOUSE_BUTTON_LEFT:
+					_select_item(_focused_index)
+					get_viewport().set_input_as_handled()
+				MOUSE_BUTTON_RIGHT:
+					_cancel()
+					get_viewport().set_input_as_handled()
+
+
+func _on_visiblity_changed() -> void:
+	if not visible:
+		if selected_index != _focused_index: # Cancellation
+			_focused_index = selected_index
+
+
+func _cancel() -> void:
 	hide()
 	get_viewport().set_input_as_handled()
-	emit_signal("item_cancelled")
+	item_cancelled.emit()
 
-func select_item(index):
-	set_button_style(selected_index, "normal", "normal")
+
+func _select_item(index: int) -> void:
+	_set_button_style(selected_index, "normal", "normal")
 	selected_index = index
-	focused_index = selected_index
+	_focused_index = selected_index
 	hide()
-	emit_signal("item_selected", selected_index)
+	item_selected.emit(selected_index)
 
-func focus_item():
+
+func _focus_item() -> void:
 	queue_redraw()
-	var pos = get_global_mouse_position()
-	var count = max(buttons.size(), 1)
-	var angle_offset = 2 * PI / count
-	var angle = pos.angle_to_point(global_position) + PI / 2 # -90 deg initial offset
+	var pos := get_global_mouse_position()
+	var count := maxi(buttons.size(), 1)
+	var angle_offset := 2 * PI / count
+	var angle := pos.angle_to_point(global_position) + PI / 2 # -90 deg initial offset
 	if angle < 0:
 		angle += 2 * PI
 
-	var index = (angle / angle_offset)
-	var decimal = index - floor(index)
+	var index: float = angle / angle_offset
+	var decimal := index - floorf(index)
 	index = floor(index)
 	if decimal >= 0.5:
 		index += 1
-	if index > buttons.size()-1:
+
+	if index > buttons.size() - 1:
 		index = 0
 
-	set_button_style(focused_index, "normal", "normal")
-	focused_index = index
-	set_button_style(focused_index, "normal", "hover")
-	set_button_style(selected_index, "normal", "focus")
-	emit_signal("item_focused", focused_index)
+	_set_button_style(_focused_index, "normal", "normal")
+	_focused_index = int(index)
+	_set_button_style(_focused_index, "normal", "hover")
+	_set_button_style(selected_index, "normal", "focus")
+	item_focused.emit(_focused_index)
 
-func popup(pos):
+
+func popup(pos: Vector2) -> void:
 	global_position = pos
 	show()
 
-func populate_menu():
-	clear_menu()
+
+func _populate_menu() -> void:
+	_clear_menu()
 	buttons = []
 	for i in items.size():
-		var item = items[i]
-		var is_array = item is Array
-		var name = item if not is_array else item[0]
-		var value = null if not is_array else item[1]
-		var button = Button.new()
+		var item: Variant = items[i]
+		var is_array := typeof(item) == TYPE_ARRAY
+		var option_text: String = item if not is_array else item[0]
+		var option_value:Variant = null if not is_array else item[1]
+		var button := Button.new()
 		button.grow_horizontal = Control.GROW_DIRECTION_BOTH
-		button.text = name
-		if value != null:
-			button.set_meta("value", value)
+		button.text = option_text
+		if option_value != null:
+			button.set_meta("value", option_value)
+
 		buttons.append(button)
-		set_button_style(i, "hover", "hover")
-		set_button_style(i, "pressed", "pressed")
-		set_button_style(i, "focus", "focus")
-		set_button_style(i, "disabled", "disabled")
-		set_button_style(i, "normal", "normal")
+		_set_button_style(i, "hover", "hover")
+		_set_button_style(i, "pressed", "pressed")
+		_set_button_style(i, "focus", "focus")
+		_set_button_style(i, "disabled", "disabled")
+		_set_button_style(i, "normal", "normal")
 		add_child(button)
-	align()
 
-	set_button_style(selected_index, "normal", "focus")
+	_align()
 
-func align():
-	var final_radius = radius
-	if grow_with_max_button_width:
-		var max_button_width = 0.0
+	_set_button_style(selected_index, "normal", "focus")
+
+
+func _align() -> void:
+	var final_radius := radius
+	if _grow_with_max_button_width:
+		var max_button_width := 0.0
 		for button in buttons:
 			max_button_width = max(max_button_width, button.size.x)
-		final_radius = max(radius, max_button_width)
-	var count = max(buttons.size(), 1)
-	var angle_offset = 2 * PI / count
-	var angle = PI / 2 # 90 deg initial offset
+
+		final_radius = maxf(radius, max_button_width)
+
+	var count := maxi(buttons.size(), 1)
+	var angle_offset := 2 * PI / count
+	var angle := PI / 2 # 90 deg initial offset
 	for button in buttons:
 		button.position = Vector2(final_radius, 0.0).rotated(angle) - (button.size / 2.0)
 		angle += angle_offset
 
-func clear_menu():
+func _clear_menu() -> void:
 	for button in buttons:
 		button.queue_free()
 
-func set_button_style(index, name, source):
+
+func _set_button_style(index: int, target_style: String, source_style: String) -> void:
 	if index < 0 or index > buttons.size() - 1:
 		return
 
-	buttons[index].set("theme_override_styles/%s" % name, get_theme_stylebox(source, "Button"))
+	buttons[index].set(
+		"theme_override_styles/%s" % target_style,
+		get_theme_stylebox(source_style, "Button")
+	)
 
-func set_items(v):
+
+func _set_items(v: Array[Variant]) -> void:
 	items = v
 	if is_inside_tree():
-		populate_menu()
+		_populate_menu()
 
-func set_selected_index(v):
-	set_button_style(selected_index, "normal", "normal")
+
+func _set_selected_index(v: int) -> void:
+	_set_button_style(selected_index, "normal", "normal")
 	selected_index = v
-	set_button_style(selected_index, "normal", "focus")
+	_set_button_style(selected_index, "normal", "focus")
 
-func set_radius(v):
+
+func _set_radius(v: float) -> void:
 	radius = v
-	align()
+	_align()
 
-func set_theme_source_node(v):
+
+func _set_theme_source_node(v: Control) -> void:
 	theme_source_node = v
 	for pie_menu in pie_menus:
-		if pie_menu:
+		if is_instance_valid(pie_menu):
 			pie_menu.theme_source_node = theme_source_node
